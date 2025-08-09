@@ -81,16 +81,35 @@ export default function Page() {
     setSharing(false);
   };
   const callPeer = async (toPeerId: string) => {
-    if (!localStreamRef.current) return;
+    console.log('Calling peer:', toPeerId);
+    if (!localStreamRef.current) {
+      console.error('No local stream available');
+      return;
+    }
     const pc = createPeer();
     localStreamRef.current.getTracks().forEach((t) => pc.addTrack(t, localStreamRef.current!));
     pc.onicecandidate = (e) => { if (e.candidate) push(toPeerId, { type: "candidate", from: selfId, payload: e.candidate.toJSON() }); };
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
+    console.log('Sending offer to peer:', toPeerId);
     await push(toPeerId, { type: "offer", from: selfId, payload: offer });
     setPeers((prev) => ({ ...prev, [toPeerId]: { id: toPeerId, pc } }));
   };
-  const connectAllViewers = async () => { const others = (await listPeers()).filter((id) => id !== selfId); await Promise.all(others.map((id) => callPeer(id))); };
+  const connectAllViewers = async () => {
+    try {
+      console.log('Connecting all viewers...');
+      const others = (await listPeers()).filter((id) => id !== selfId);
+      console.log('Found peers:', others);
+      if (others.length === 0) {
+        console.log('No other peers to connect to');
+        return;
+      }
+      await Promise.all(others.map((id) => callPeer(id)));
+      console.log('Connected to all viewers successfully');
+    } catch (error) {
+      console.error('Error connecting to viewers:', error);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-neutral-50">
