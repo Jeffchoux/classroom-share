@@ -37,21 +37,32 @@ export default function Page() {
     const loop = async () => {
       while (alive) {
         const msgs = await poll();
+        if (msgs.length > 0) {
+          console.log('Received messages:', msgs);
+        }
         for (const m of msgs) {
           if (m.type === "offer") {
+            console.log('Processing offer from:', m.from);
             const from = m.from;
             const pc = peers[from]?.pc || createPeer();
             pc.onicecandidate = (e) => { if (e.candidate) push(from, { type: "candidate", from: selfId, payload: e.candidate.toJSON() }); };
-            pc.ontrack = (ev) => { const stream = ev.streams[0]; setPeers((prev) => ({ ...prev, [from]: { id: from, pc, stream } })); };
+            pc.ontrack = (ev) => { 
+              console.log('Received track from:', from);
+              const stream = ev.streams[0]; 
+              setPeers((prev) => ({ ...prev, [from]: { id: from, pc, stream } })); 
+            };
             await pc.setRemoteDescription(new RTCSessionDescription(m.payload));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             await push(from, { type: "answer", from: selfId, payload: answer });
+            console.log('Sent answer to:', from);
             setPeers((prev) => ({ ...prev, [from]: { id: from, pc } }));
           } else if (m.type === "answer") {
+            console.log('Processing answer from:', m.from);
             const from = m.from; const pc = peers[from]?.pc; if (!pc) continue;
             await pc.setRemoteDescription(new RTCSessionDescription(m.payload));
           } else if (m.type === "candidate") {
+            console.log('Processing ICE candidate from:', m.from);
             const from = m.from; const pc = peers[from]?.pc; if (!pc) continue;
             try { await pc.addIceCandidate(new RTCIceCandidate(m.payload)); } catch {}
           }
