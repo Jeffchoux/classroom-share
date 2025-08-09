@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   const roomId = searchParams.get("roomId");
   if (!roomId) return NextResponse.json([]);
   const setKey = `rooms:${roomId}:peers`;
-  const ids = await kv.smembers<string>(setKey);
+  const ids = await kv.smembers<string[]>(setKey);
   return NextResponse.json(ids);
 }
 export async function POST(req: NextRequest) {
